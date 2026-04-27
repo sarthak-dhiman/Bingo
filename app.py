@@ -11,6 +11,7 @@ available_numbers = list(range(1, 26))
 players = {} # sid -> {"name": username, "avatar": avatar}
 player_order = []
 current_turn_index = 0
+manual_mode = False
 
 @app.route("/")
 def index():
@@ -20,6 +21,13 @@ def get_current_turn_player():
     if not player_order:
         return None
     return player_order[current_turn_index]
+
+@socketio.on("toggle_manual_mode")
+def toggle_manual_mode(data):
+    global manual_mode
+    manual_mode = data.get("manual_mode", False)
+    emit("manual_mode_update", {"manual_mode": manual_mode}, broadcast=True)
+    emit("game_message", f"Manual mode {'enabled' if manual_mode else 'disabled'}.", broadcast=True)
 
 @socketio.on("join_game")
 def join_game(data):
@@ -41,6 +49,7 @@ def join_game(data):
     emit("game_joined", {"name": username, "avatar": avatar})
     emit("player_list", [{"name": p["name"], "avatar": p["avatar"]} for p in players.values()], broadcast=True)
     emit("game_message", f"{username} joined the game.", broadcast=True)
+    emit("manual_mode_update", {"manual_mode": manual_mode}, room=sid)
     
     current_player_sid = get_current_turn_player()
     emit("turn_update", {
@@ -53,6 +62,10 @@ def generate_number():
     global available_numbers, current_turn_index
     sid = request.sid
     
+    if manual_mode:
+        emit("game_message", "Manual mode is active. Select a number to call.", room=sid)
+        return
+
     if get_current_turn_player() != sid:
         emit("game_message", "It's not your turn!", room=sid)
         return
@@ -74,22 +87,48 @@ def generate_number():
     else:
         emit("game_message", "All numbers have been called!", broadcast=True)
 
+@socketio.on("call_specific_number")
+def call_specific_number(data):
+    global available_numbers, current_turn_index
+    sid = request.sid
+    number = int(data.get("number"))
+
+    if not manual_mode:
+        emit("game_message", "Manual mode is not active.", room=sid)
+        return
+
+    if get_current_turn_player() != sid:
+        emit("game_message", "It's not your turn!", room=sid)
+        return
+
+    if number in available_numbers:
+        available_numbers.remove(number)
+        called_numbers.append(number)
+        
+        # Advance turn
+        current_turn_index = (current_turn_index + 1) % len(player_order)
+        next_player_sid = get_current_turn_player()
+        
+        emit("number_called", {"number": number, "called_numbers": called_numbers}, broadcast=True)
+        emit("turn_update", {
+            "current_player": players.get(next_player_sid, {}).get("name", "Waiting..."),
+            "is_your_turn": False
+        }, broadcast=True)
+    else:
+        emit("game_message", "That number has already been called!", room=sid)
+
 @socketio.on("reset_game")
 def reset_game():
-    global called_numbers, available_numbers, current_turn_index
+    global called_numbers, available_numbers, current_turn_index, manual_mode
     called_numbers = []
     available_numbers = list(range(1, 26))
     current_turn_index = 0
+    # Keep manual_mode as it is or reset? Usually reset to False is safer
+    manual_mode = False
     
     emit("game_reset", broadcast=True)
+    emit("manual_mode_update", {"manual_mode": manual_mode}, broadcast=True)
     emit("game_message", "The game has been reset.", broadcast=True)
-    
-    current_player_sid = get_current_turn_player()
-    if current_player_sid:
-        emit("turn_update", {
-            "current_player": players.get(current_player_sid, {}).get("name", "Waiting..."),
-            "is_your_turn": False
-        }, broadcast=True)
 
 @socketio.on("bingo_claim")
 def bingo_claim(data):

@@ -11,13 +11,44 @@ const messageArea = document.getElementById("messageArea");
 const currentTurnPlayer = document.getElementById("currentTurnPlayer");
 const callButton = document.getElementById("callButton");
 const userAvatarDisplay = document.getElementById("userAvatar");
+const manualModeToggle = document.getElementById("manualModeToggle");
+const manualNumberSelection = document.getElementById("manualNumberSelection");
+const manualGrid = document.getElementById("manualGrid");
 
 let numbers = [];
 let username = "";
 let userAvatar = "⚔️";
 let calledNumbers = new Set();
 let bingoCount = 0;
+let isManualMode = false;
+let myTurn = false;
 const bingoLetters = ["B", "I", "N", "G", "O"];
+
+// Manual Mode Functions
+function toggleManualMode(checked) {
+    socket.emit("toggle_manual_mode", { manual_mode: checked });
+}
+
+function callSpecificNumber(num) {
+    if (!myTurn || !isManualMode || calledNumbers.has(num)) return;
+    socket.emit("call_specific_number", { number: num });
+}
+
+function updateManualGrid() {
+    manualGrid.innerHTML = "";
+    for (let i = 1; i <= 25; i++) {
+        const cell = document.createElement("div");
+        cell.classList.add("manual-cell");
+        cell.innerText = i;
+        if (calledNumbers.has(i)) {
+            cell.classList.add("called");
+        } else if (myTurn && isManualMode) {
+            cell.classList.add("my-turn-highlight");
+            cell.onclick = () => callSpecificNumber(i);
+        }
+        manualGrid.appendChild(cell);
+    }
+}
 
 // Splash Screen Logic
 window.addEventListener("load", () => {
@@ -166,8 +197,16 @@ function applyLocalReset() {
     numberDisplay.innerText = "Waiting for a new number...";
     setMessage("Game has been reset.", "success");
     
+    // Reset manual mode UI
+    isManualMode = false;
+    manualModeToggle.checked = false;
+    manualNumberSelection.classList.add("hidden");
+    updateManualGrid();
+    
     // Close modal if it was open
     closeWinnerModal();
+    closeLoserModal();
+    closeGreedyModal();
 }
 
 function getBoardState() {
@@ -279,14 +318,41 @@ socket.on("player_list", (players) => {
 
 socket.on("turn_update", (data) => {
     currentTurnPlayer.innerText = data.current_player;
-    if (data.current_player === username) {
-        callButton.disabled = false;
+    myTurn = data.current_player === username;
+    
+    if (myTurn) {
+        callButton.disabled = isManualMode; // Disable auto-call button if in manual mode
         callButton.classList.add("my-turn");
-        setMessage("It's your turn to call a number!", "success");
+        if (!isManualMode) {
+            setMessage("It's your turn to call a number!", "success");
+        } else {
+            setMessage("It's your turn! Select a number from the grid.", "success");
+        }
     } else {
         callButton.disabled = true;
         callButton.classList.remove("my-turn");
     }
+    updateManualGrid();
+});
+
+socket.on("manual_mode_update", (data) => {
+    isManualMode = data.manual_mode;
+    manualModeToggle.checked = isManualMode;
+    
+    if (isManualMode) {
+        manualNumberSelection.classList.remove("hidden");
+        if (myTurn) {
+            callButton.disabled = true;
+            setMessage("Manual mode active. Select a number from the grid.", "success");
+        }
+    } else {
+        manualNumberSelection.classList.add("hidden");
+        if (myTurn) {
+            callButton.disabled = false;
+            setMessage("It's your turn to call a number!", "success");
+        }
+    }
+    updateManualGrid();
 });
 
 socket.on("number_called", (data) => {
@@ -304,6 +370,7 @@ socket.on("number_called", (data) => {
     }
     
     setMessage(`Number ${num} called.`, "success");
+    updateManualGrid();
 });
 
 socket.on("game_reset", () => {
