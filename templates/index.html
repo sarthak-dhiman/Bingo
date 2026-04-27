@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bingo Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+    <div id="splashScreen" class="splash-screen">
+        <div class="splash-content">
+            <h1 class="chicmic-logo">Chicmic Studios</h1>
+            <p class="developed-by">developed at chicmic studios out of boredom</p>
+            <div class="pixel-loader"></div>
+        </div>
+        <div class="splash-creators">
+            <p>Made by -</p>
+            <p>1) Sarthak Dhiman</p>
+            <p>2) Kaashif Matto</p>
+        </div>
+    </div>
+
+    <div class="page">
+        <header class="hero">
+            <div>
+                <h1>Bingo Live</h1>
+                <p>Play real-time Bingo with friends.</p>
+            </div>
+        </header>
+
+        <section class="card login-card" id="loginCard">
+            <h2>Join the game</h2>
+            <form id="loginForm">
+                <label for="username">Your name</label>
+                <input id="username" type="text" placeholder="Enter a name" maxlength="20" required />
+                
+                <label>Choose Your Terraria Sprite</label>
+                <div class="avatar-grid">
+                    <div class="avatar-option selected" data-avatar="⚔️" title="Warrior">⚔️</div>
+                    <div class="avatar-option" data-avatar="🧙‍♂️" title="Mage">🧙‍♂️</div>
+                    <div class="avatar-option" data-avatar="🏹" title="Ranger">🏹</div>
+                    <div class="avatar-option" data-avatar="💧" title="Blue Slime">💧</div>
+                    <div class="avatar-option" data-avatar="🟢" title="Green Slime">🟢</div>
+                    <div class="avatar-option" data-avatar="🟣" title="Purple Slime">🟣</div>
+                    <div class="avatar-option" data-avatar="🐰" title="Bunny">🐰</div>
+                    <div class="avatar-option" data-avatar="👁️" title="The Eye">👁️</div>
+                </div>
+                
+                <button type="submit">Join</button>
+            </form>
+        </section>
+
+        <section class="card hidden" id="gameCard">
+            <div class="game-header">
+                <div class="player-info">
+                    <div id="userAvatar" class="current-avatar"></div>
+                    <div>
+                        <h2 id="welcomeText">Welcome</h2>
+                        <div id="turnIndicator" class="turn-indicator">Turn: <span id="currentTurnPlayer">Waiting...</span></div>
+                        <p id="messageArea">Connected. Start calling numbers to play.</p>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button id="callButton" onclick="generateNumber()">Call Number</button>
+                    <button onclick="claimBingo()">Claim Bingo</button>
+                    <button onclick="resetGame()">Reset Game</button>
+                </div>
+            </div>
+
+            <div class="bingo-progress">
+                <span id="letter-B" class="bingo-letter">B</span>
+                <span id="letter-I" class="bingo-letter">I</span>
+                <span id="letter-N" class="bingo-letter">N</span>
+                <span id="letter-G" class="bingo-letter">G</span>
+                <span id="letter-O" class="bingo-letter">O</span>
+            </div>
+
+            <div class="main-content">
+                <div class="board-container">
+                    <div id="board" class="board"></div>
+                </div>
+
+                <div class="sidebar">
+                    <div class="status-box">
+                        <h3>Current Number</h3>
+                        <div id="numberDisplay" class="number-display">Waiting...</div>
+                    </div>
+                    <div class="status-box">
+                        <h3>Players</h3>
+                        <ul id="playerList"></ul>
+                    </div>
+                    <div class="history-card">
+                        <h3>Called Numbers</h3>
+                        <ul id="historyList"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div id="winnerModal" class="modal hidden">
+            <div class="modal-content">
+                <div id="winAnimationContainer" class="animation-container">
+                    <div class="winner-avatar-container">
+                        <div id="winnerAvatarDisplay" class="avatar-large"></div>
+                        <div class="crown">👑</div>
+                    </div>
+                </div>
+                <h1 class="win-text">YOU WIN!</h1>
+                <p id="winnerNameDisplay">Player Name</p>
+                <button onclick="closeWinnerModal()">AWESOME!</button>
+            </div>
+        </div>
+
+        <div id="loserModal" class="modal hidden">
+            <div class="modal-content">
+                <div id="loseAnimationContainer" class="animation-container">
+                    <div class="loser-avatar-container">
+                        <div id="loserAvatarDisplay" class="avatar-large"></div>
+                        <div class="spear">🗡️</div>
+                    </div>
+                </div>
+                <h1 class="lose-text">DEFEATED!</h1>
+                <p id="loserMessage">you were not fit for the throne</p>
+                <button onclick="closeLoserModal()">Bummer...</button>
+            </div>
+        </div>
+
+        <div id="greedyModal" class="modal hidden">
+            <div class="modal-content">
+                <div id="greedyAnimationContainer" class="animation-container">
+                    <div class="greedy-avatar-container">
+                        <div id="greedyAvatarDisplay" class="avatar-large"></div>
+                        <div class="newspaper">🗞️</div>
+                    </div>
+                </div>
+                <h1 class="greedy-text">STOP!</h1>
+                <p>you greedy greedy fella</p>
+                <button onclick="closeGreedyModal()">Sorry...</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="/static/script.js"></script>
+</body>
+
+</html>
