@@ -318,7 +318,7 @@ socket.on("player_list", (players) => {
 
 socket.on("turn_update", (data) => {
     currentTurnPlayer.innerText = data.current_player;
-    myTurn = data.current_player === username;
+    myTurn = data.current_player_sid === socket.id;
     
     if (myTurn) {
         callButton.disabled = isManualMode; // Disable auto-call button if in manual mode

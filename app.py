@@ -54,7 +54,7 @@ def join_game(data):
     current_player_sid = get_current_turn_player()
     emit("turn_update", {
         "current_player": players.get(current_player_sid, {}).get("name", "Waiting..."),
-        "is_your_turn": current_player_sid == sid
+        "current_player_sid": current_player_sid
     }, broadcast=True)
 
 @socketio.on("call_number")
@@ -82,7 +82,7 @@ def generate_number():
         emit("number_called", {"number": number, "called_numbers": called_numbers}, broadcast=True)
         emit("turn_update", {
             "current_player": players.get(next_player_sid, {}).get("name", "Waiting..."),
-            "is_your_turn": False
+            "current_player_sid": next_player_sid
         }, broadcast=True)
     else:
         emit("game_message", "All numbers have been called!", broadcast=True)
@@ -112,7 +112,7 @@ def call_specific_number(data):
         emit("number_called", {"number": number, "called_numbers": called_numbers}, broadcast=True)
         emit("turn_update", {
             "current_player": players.get(next_player_sid, {}).get("name", "Waiting..."),
-            "is_your_turn": False
+            "current_player_sid": next_player_sid
         }, broadcast=True)
     else:
         emit("game_message", "That number has already been called!", room=sid)
@@ -123,12 +123,17 @@ def reset_game():
     called_numbers = []
     available_numbers = list(range(1, 26))
     current_turn_index = 0
-    # Keep manual_mode as it is or reset? Usually reset to False is safer
     manual_mode = False
     
     emit("game_reset", broadcast=True)
     emit("manual_mode_update", {"manual_mode": manual_mode}, broadcast=True)
     emit("game_message", "The game has been reset.", broadcast=True)
+    
+    current_player_sid = get_current_turn_player()
+    emit("turn_update", {
+        "current_player": players.get(current_player_sid, {}).get("name", "Waiting...") if current_player_sid else "No one",
+        "current_player_sid": current_player_sid
+    }, broadcast=True)
 
 @socketio.on("bingo_claim")
 def bingo_claim(data):
@@ -163,7 +168,7 @@ def handle_disconnect():
         current_player_sid = get_current_turn_player()
         emit("turn_update", {
             "current_player": players.get(current_player_sid, {}).get("name", "Waiting...") if current_player_sid else "No one",
-            "is_your_turn": False
+            "current_player_sid": current_player_sid
         }, broadcast=True)
 
 if __name__ == "__main__":
