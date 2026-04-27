@@ -1,9 +1,10 @@
+import os
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 import random
 
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode='threading')
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")
 
 called_numbers = []
 available_numbers = list(range(1, 26))
@@ -127,4 +128,5 @@ def handle_disconnect():
         }, broadcast=True)
 
 if __name__ == "__main__":
-    socketio.run(app, host="127.0.0.1", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port, debug=False)
